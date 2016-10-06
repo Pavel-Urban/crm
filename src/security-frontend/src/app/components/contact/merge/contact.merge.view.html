@@ -1,0 +1,38 @@
+<crm-form-wrapper form-title="vm.title" submit-text="{{mergeForm.$valid?'Ok':null}}" cancel-text="Cancel"
+                  submit-btn="vm.ok()" cancel-btn="vm.cancel()" modal="true" ng-form="mergeForm">
+    <uib-tabset active="active">
+        <uib-tab heading="General Info">
+            <div class="form-group" crm-input-validation>
+                <label for="firstName">First Name - {{vm.oldContact.firstName}}</label>
+                <input ng-model="vm.newContact.firstName"
+                       id="firstName"
+                       name="firstName"
+                       class="form-control"
+                       type="text">
+                <input type="checkbox" checked>
+        <span ng-show="vm.oldContact.firstName.$dirty && vm.oldContact.firstName.$error.required"
+              class="help-block">First name is required</span>
+            </div>
+            <div class="form-group" crm-input-validation>
+                <label for="lastName">Last Name - {{vm.oldContact.lastName}}</label>
+                <input ng-model="vm.newContact.lastName"
+                       id="lastName"
+                       name="lastName"
+                       class="form-control"
+                       type="text">
+                <input type="checkbox" checked>
+        <span ng-show="vm.oldContact.lastName.$dirty && vm.oldContact.lastName.$error.required"
+              class="help-block">First name is required</span>
+            </div>
+        </uib-tab>
+
+        <uib-tab heading="Work Experience">
+            <crm-contact-work-experience></crm-contact-work-experience>
+        </uib-tab>
+        <uib-tab heading="Education">
+            <crm-contact-education-info></crm-contact-education-info>
+        </uib-tab>
+
+    </uib-tabset>
+
+</crm-form-wrapper>

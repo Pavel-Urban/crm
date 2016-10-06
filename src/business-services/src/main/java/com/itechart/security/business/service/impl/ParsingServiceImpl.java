@@ -1,10 +1,13 @@
 package com.itechart.security.business.service.impl;
 
+import com.itechart.security.business.dao.CountryAltNameDao;
 import com.itechart.security.business.dao.CountryDao;
 import com.itechart.security.business.model.dto.*;
 import com.itechart.security.business.model.persistent.Country;
+import com.itechart.security.business.model.persistent.CountryAltName;
 import com.itechart.security.business.service.ParsingService;
 import org.apache.commons.lang3.time.DateUtils;
+import org.hibernate.annotations.SourceType;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -20,7 +23,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
+import java.text.DateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -31,11 +36,14 @@ import java.util.stream.Collectors;
 @Service
 public class ParsingServiceImpl implements ParsingService {
     private static final Logger log = LoggerFactory.getLogger(ParsingServiceImpl.class);
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6";
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36";
     private static final String REFFERRER = "http://www.google.com";
 
     @Autowired
     private CountryDao countryDao;
+
+    @Autowired
+    private CountryAltNameDao countryAltNameDao;
 
     @Override
     @Transactional
@@ -55,7 +63,7 @@ public class ParsingServiceImpl implements ParsingService {
             contact.setIndustry(getLocationOrIndustry(document, this::industryFilter));
             contact.setSummary(getSummary(document));
             contact.setSkills(getSkills(document));
-            contact.setSchools(getEducation(document));
+            contact.setEducations(getEducation(document));
             contact.setPhotoUrl(getPicture(document));
             contact.setLanguages(getLanguages(document));
             contact.setWorkplaces(getWorkplaces(document, this::jobFilter));
@@ -116,15 +124,21 @@ public class ParsingServiceImpl implements ParsingService {
         return dto;
     }
 
-    private Set<SchoolDto> getEducation(Document document) {
+    private Set<UniversityEducationDto> getEducation(Document document) {
         Element schools = document.getElementById("education");
         return Objects.isNull(schools) ? new HashSet<>() : schools.getElementsByClass("school").stream()
                 .map(element -> {
-                    SchoolDto school = new SchoolDto();
-                    school.setName(element.getElementsByClass("item-title").first().text());
-                    school.setDegree(element.getElementsByClass("item-subtitle").text());
-                    school.setDateRange(element.getElementsByClass("date-range").text());
-                    return school;
+                    UniversityEducationDto universityEducationDto = new UniversityEducationDto();
+                    universityEducationDto.setName(element.getElementsByClass("item-title").first().text());
+                    universityEducationDto.setSpeciality(element.getElementsByClass("item-subtitle").text());
+                    DateFormat dateFormat = new SimpleDateFormat("dd-mm-yyyy");
+                    try{
+                        universityEducationDto.setStartDate(dateFormat.parse("01-01-" + element.getElementsByClass("date-range").text().substring(0,4)));
+                        universityEducationDto.setEndDate(dateFormat.parse("01-01-" + element.getElementsByClass("date-range").text().substring(7)));
+                    }catch (Exception e){
+                        log.error("Error parsing linkedin education date");
+                    }
+                    return universityEducationDto;
                 }).collect(Collectors.toSet());
     }
 
@@ -191,19 +205,21 @@ public class ParsingServiceImpl implements ParsingService {
 
         if (!addressStrings.isEmpty()) {
             String countryName = addressStrings.get(addressStrings.size() - 1);
-            Country country = countryDao.getByName(countryName);
+            //Country country = countryDao.getByName(countryName);
+            Country country = countryAltNameDao.getByAltName(countryName).getCountry();
             if (!Objects.isNull(country)) {
                 address.setCountry(
-                        countryDao.getByName(countryName)
-                                .getId());
+                        country.getId());
                 if (addressStrings.size() == 2) address.setRegion(addressStrings.get(0));
                 if (addressStrings.size() == 3) {
                     address.setRegion(addressStrings.get(1));
                     address.setCity(addressStrings.get(0));
                 }
             } else {
-                if (addressStrings.size() == 2) {
+                if (addressStrings.size() > 1) {
                     address.setRegion(addressStrings.get(1));
+                }
+                if (addressStrings.size() > 0) {
                     address.setCity(addressStrings.get(0));
                 }
             }

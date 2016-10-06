@@ -79,16 +79,23 @@
         }
 
         function parseProfile(scope, profileUrl) {
-            dialogService.confirm('Data will be merged. Do you agree?')
+            /*dialogService.confirm('Data will be merged. Do you agree?')
                 .result.then(function () {
                 contactService.parseProfile(profileUrl).then(function (response) {
                     merge(scope.contact, response.data);
                 });
+            });*/
+            contactService.parseProfile(profileUrl).then(function (response) {
+                merge(scope.contact, response.data);
             });
+
 
         }
 
         function merge(oldContact, newContact) {
+
+            openMergeDialog(oldContact, newContact);
+
             angular.forEach(newContact, function (value, key) {
                 if (value) {
                     if (angular.isArray(value)) {
@@ -105,13 +112,31 @@
             return oldContact;
         }
 
+        function openMergeDialog(oldContact, newContact) {
+
+            var detailsUrl = "app/components/contact/merge/contact.merge.view.html";
+            return dialogService.custom(detailsUrl,{
+                title:'Merge Contact Info',
+                size:'modal--user-table',
+                cancelTitle:'Cancel',
+                okTitle:'Merge',
+                newContact:newContact,
+                oldContact: angular.copy(oldContact),
+                details:{
+                    now:new Date()
+                }
+            }).result;
+
+
+        }
+
         function isBlank(str) {
             return (!str || /^\s*$/.test(str));
         }
 
         function isLinkedInUrl(url) {
             if (url) {
-                return ("/.*linkedin.*/").test(url);
+                return /.*linkedin.*/.test(url);
             }
         }
 
